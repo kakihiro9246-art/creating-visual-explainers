@@ -1,0 +1,21 @@
+{
+  "name": "creating-visual-explainers",
+  "version": "1.0.0",
+  "description": "わからない言葉やしくみを AI に伝えるだけで、初めて聞く人にもわかるように噛み砕いた図解ページを自動で作ってくれるツールです。",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "news": "node scripts/daily-food-news.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://git.ai-driven-school-portal.com/ADS/creating-visual-explainers"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1"
+  }
+}

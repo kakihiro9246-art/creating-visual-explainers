@@ -1,0 +1,32 @@
+name: 食品業界 朝のニュース自動生成
+
+on:
+  schedule:
+    # 毎朝 9:00 JST (= UTC 0:00) に実行（平日のみ）
+    - cron: '0 0 * * 1-5'
+  workflow_dispatch:
+    # 手動実行ボタン（テスト用）
+
+jobs:
+  generate-and-post:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Node.js をセットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 依存関係をインストール
+        run: npm ci
+
+      - name: ニュース生成・デプロイ・Teams通知
+        run: node scripts/daily-food-news.mjs
+        env:
+          GEMINI_API_KEY:    ${{ secrets.GEMINI_API_KEY }}
+          SURGE_TOKEN:       ${{ secrets.SURGE_TOKEN }}
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
