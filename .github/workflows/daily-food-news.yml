@@ -29,4 +29,4 @@ jobs:
         env:
           GEMINI_API_KEY:    ${{ secrets.GEMINI_API_KEY }}
           SURGE_TOKEN:       ${{ secrets.SURGE_TOKEN }}
-          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          LINE_NOTIFY_TOKEN: ${{ secrets.LINE_NOTIFY_TOKEN }}
