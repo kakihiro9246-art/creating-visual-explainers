@@ -29,4 +29,6 @@ jobs:
         env:
           GEMINI_API_KEY:    ${{ secrets.GEMINI_API_KEY }}
           SURGE_TOKEN:       ${{ secrets.SURGE_TOKEN }}
-          LINE_NOTIFY_TOKEN: ${{ secrets.LINE_NOTIFY_TOKEN }}
+          GMAIL_USER:        ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          MAIL_TO:           ${{ secrets.MAIL_TO }}

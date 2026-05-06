@@ -10,6 +10,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { execSync } from 'child_process';
+import nodemailer from 'nodemailer';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -154,33 +155,68 @@ function deploy(htmlPath) {
   console.log(`✓ デプロイ完了: ${url}`);
 }
 
-// ─── 5. LINE に通知 ───────────────────────────────────────
-async function postToLine(newsData) {
-  const token = process.env.LINE_NOTIFY_TOKEN;
-  if (!token) { console.warn('LINE_NOTIFY_TOKEN が未設定のためスキップします'); return; }
+// ─── 5. メール通知 ────────────────────────────────────────
+async function sendEmail(newsData) {
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailPass = process.env.GMAIL_APP_PASSWORD;
+  const mailTo    = process.env.MAIL_TO;
+  if (!gmailUser || !gmailPass || !mailTo) {
+    console.warn('GMAIL_USER / GMAIL_APP_PASSWORD / MAIL_TO が未設定のためスキップします');
+    return;
+  }
 
-  const lines = [
-    `\n【食品業界 朝のニュース】${dateLabel}`,
-    `━━━━━━━━━━━━━━━`,
-    ...newsData.news.map((n, i) =>
-      `No.${i + 1}【${n.category}】\n${n.headline}`
-    ),
-    `━━━━━━━━━━━━━━━`,
-    `詳細はこちら:\n${url}`,
-  ];
-
-  const params = new URLSearchParams({ message: lines.join('\n') });
-  const res = await fetch('https://notify-api.line.me/api/notify', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: params.toString(),
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: gmailUser, pass: gmailPass },
   });
 
-  if (!res.ok) throw new Error(`LINE Notify エラー: ${res.status} ${await res.text()}`);
-  console.log('✓ LINE に投稿しました');
+  const textLines = [
+    `食品業界 朝のニュース — ${dateLabel}`,
+    `${'─'.repeat(30)}`,
+    ...newsData.news.map((n, i) =>
+      `No.${i + 1}【${n.category}】${n.headline}\n${n.summary}`
+    ),
+    `${'─'.repeat(30)}`,
+    `詳細レポート: ${url}`,
+  ];
+
+  const htmlRows = newsData.news.map((n, i) => `
+    <tr>
+      <td style="padding:12px;border-bottom:1px solid #e2e8f0;width:60px;color:#64748b;font-size:12px;">
+        No.${i + 1}<br>
+        <span style="background:${n.category === '量販店' ? '#dbeafe' : '#d1fae5'};color:${n.category === '量販店' ? '#1d4ed8' : '#065f46'};padding:2px 6px;border-radius:9999px;font-size:11px;">${n.category}</span>
+      </td>
+      <td style="padding:12px;border-bottom:1px solid #e2e8f0;">
+        <div style="font-weight:bold;color:#1e293b;margin-bottom:4px;">${n.headline}</div>
+        <div style="color:#475569;font-size:13px;">${n.summary}</div>
+        ${n.source_url ? `<div style="margin-top:4px;font-size:11px;color:#94a3b8;">出典: <a href="${n.source_url}" style="color:#94a3b8;">${n.source}</a></div>` : ''}
+      </td>
+    </tr>`).join('');
+
+  const html = `
+    <div style="font-family:'Noto Sans JP',sans-serif;max-width:600px;margin:0 auto;color:#334155;">
+      <div style="background:#3b82f6;padding:20px 24px;border-radius:8px 8px 0 0;">
+        <div style="color:white;font-size:12px;opacity:.8;margin-bottom:4px;">食品業界ニュース</div>
+        <div style="color:white;font-size:20px;font-weight:900;">朝のニュース報告</div>
+        <div style="color:rgba(255,255,255,.8);font-size:13px;margin-top:4px;">${dateLabel}</div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;background:#f8fafc;border:1px solid #e2e8f0;border-top:none;">
+        ${htmlRows}
+      </table>
+      <div style="padding:16px 24px;background:#f1f5f9;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 8px 8px;text-align:center;">
+        <a href="${url}" style="background:#3b82f6;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:14px;">詳細レポートを読む</a>
+      </div>
+    </div>`;
+
+  await transporter.sendMail({
+    from: `食品ニュース <${gmailUser}>`,
+    to: mailTo,
+    subject: `【食品業界 朝のニュース】${dateLabel}`,
+    text: textLines.join('\n'),
+    html,
+  });
+
+  console.log(`✓ メールを送信しました → ${mailTo}`);
 }
 
 // ─── main ─────────────────────────────────────────────────
@@ -206,8 +242,8 @@ async function postToLine(newsData) {
   console.log('\n3. surge にデプロイ中...');
   deploy(outFile);
 
-  console.log('\n4. LINE に通知中...');
-  await postToLine(newsData);
+  console.log('\n4. メール送信中...');
+  await sendEmail(newsData);
 
   console.log(`\n=== 完了 ===\n公開URL: ${url}\n`);
 })();
