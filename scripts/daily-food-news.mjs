@@ -154,35 +154,41 @@ function deploy(htmlPath) {
   console.log(`✓ デプロイ完了: ${url}`);
 }
 
-// ─── 5. LINE に通知 ───────────────────────────────────────
-async function postToLine(newsData) {
-  const token = process.env.LINE_NOTIFY_TOKEN;
-  if (!token) { console.warn('LINE_NOTIFY_TOKEN が未設定のためスキップします'); return; }
+// ─── 5. Teams に通知 ──────────────────────────────────────
+async function postToTeams(newsData) {
+  const webhookUrl = process.env.TEAMS_WEBHOOK_URL;
+  if (!webhookUrl) { console.warn('TEAMS_WEBHOOK_URL が未設定のためスキップします'); return; }
 
-  const lines = [
-    `\n【食品業界 朝のニュース】${dateLabel}`,
-    `━━━━━━━━━━━━━━━`,
-    ...newsData.news.map((n, i) =>
-      `No.${i + 1}【${n.category}】\n${n.headline}`
-    ),
-    `━━━━━━━━━━━━━━━`,
-    `詳細はこちら:\n${url}`,
-  ];
+  const facts = newsData.news.map((n, i) => ({
+    name: `No.${i + 1} [${n.category}]`,
+    value: n.headline,
+  }));
 
-  const message = lines.join('\n');
+  const card = {
+    '@type': 'MessageCard',
+    '@context': 'http://schema.org/extensions',
+    themeColor: '3B82F6',
+    summary: `食品業界 朝のニュース ${dateLabel}`,
+    sections: [{
+      activityTitle: `食品業界 朝のニュース — ${dateLabel}`,
+      activitySubtitle: '量販店・外食業界の最新動向',
+      facts,
+    }],
+    potentialAction: [{
+      '@type': 'OpenUri',
+      name: '全文を読む',
+      targets: [{ os: 'default', uri: url }],
+    }],
+  };
 
-  const params = new URLSearchParams({ message });
-  const res = await fetch('https://notify-api.line.me/api/notify', {
+  const res = await fetch(webhookUrl, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: params.toString(),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(card),
   });
 
-  if (!res.ok) throw new Error(`LINE Notify エラー: ${res.status} ${await res.text()}`);
-  console.log('✓ LINE に投稿しました');
+  if (!res.ok) throw new Error(`Teams webhook エラー: ${res.status} ${await res.text()}`);
+  console.log('✓ Teams に投稿しました');
 }
 
 // ─── main ─────────────────────────────────────────────────
@@ -208,8 +214,8 @@ async function postToLine(newsData) {
   console.log('\n3. surge にデプロイ中...');
   deploy(outFile);
 
-  console.log('\n4. LINE に通知中...');
-  await postToLine(newsData);
+  console.log('\n4. Teams に通知中...');
+  await postToTeams(newsData);
 
   console.log(`\n=== 完了 ===\n公開URL: ${url}\n`);
 })();
