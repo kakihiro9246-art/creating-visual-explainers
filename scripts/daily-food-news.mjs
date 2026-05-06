@@ -154,41 +154,45 @@ function deploy(htmlPath) {
   console.log(`✓ デプロイ完了: ${url}`);
 }
 
-// ─── 5. Teams に通知 ──────────────────────────────────────
-async function postToTeams(newsData) {
-  const webhookUrl = process.env.TEAMS_WEBHOOK_URL;
-  if (!webhookUrl) { console.warn('TEAMS_WEBHOOK_URL が未設定のためスキップします'); return; }
+// ─── 5. Slack に通知 ──────────────────────────────────────
+async function postToSlack(newsData) {
+  const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+  if (!webhookUrl) { console.warn('SLACK_WEBHOOK_URL が未設定のためスキップします'); return; }
 
-  const facts = newsData.news.map((n, i) => ({
-    name: `No.${i + 1} [${n.category}]`,
-    value: n.headline,
-  }));
+  const bulletList = newsData.news
+    .map((n, i) => `*No.${i + 1} [${n.category}]* ${n.headline}`)
+    .join('\n');
 
-  const card = {
-    '@type': 'MessageCard',
-    '@context': 'http://schema.org/extensions',
-    themeColor: '3B82F6',
-    summary: `食品業界 朝のニュース ${dateLabel}`,
-    sections: [{
-      activityTitle: `食品業界 朝のニュース — ${dateLabel}`,
-      activitySubtitle: '量販店・外食業界の最新動向',
-      facts,
-    }],
-    potentialAction: [{
-      '@type': 'OpenUri',
-      name: '全文を読む',
-      targets: [{ os: 'default', uri: url }],
-    }],
+  const payload = {
+    blocks: [
+      {
+        type: 'header',
+        text: { type: 'plain_text', text: `食品業界 朝のニュース — ${dateLabel}` },
+      },
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: bulletList },
+      },
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: `*詳細レポートを読む*\n${url}` },
+        accessory: {
+          type: 'button',
+          text: { type: 'plain_text', text: '開く' },
+          url,
+        },
+      },
+    ],
   };
 
   const res = await fetch(webhookUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(card),
+    body: JSON.stringify(payload),
   });
 
-  if (!res.ok) throw new Error(`Teams webhook エラー: ${res.status} ${await res.text()}`);
-  console.log('✓ Teams に投稿しました');
+  if (!res.ok) throw new Error(`Slack webhook エラー: ${res.status} ${await res.text()}`);
+  console.log('✓ Slack に投稿しました');
 }
 
 // ─── main ─────────────────────────────────────────────────
@@ -214,8 +218,8 @@ async function postToTeams(newsData) {
   console.log('\n3. surge にデプロイ中...');
   deploy(outFile);
 
-  console.log('\n4. Teams に通知中...');
-  await postToTeams(newsData);
+  console.log('\n4. Slack に通知中...');
+  await postToSlack(newsData);
 
   console.log(`\n=== 完了 ===\n公開URL: ${url}\n`);
 })();
