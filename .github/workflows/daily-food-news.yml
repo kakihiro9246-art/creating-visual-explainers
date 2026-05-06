@@ -27,6 +27,6 @@ jobs:
       - name: ニュース生成・デプロイ・Teams通知
         run: node scripts/daily-food-news.mjs
         env:
-          GEMINI_API_KEY:    ${{ secrets.GEMINI_API_KEY }}
-          SURGE_TOKEN:       ${{ secrets.SURGE_TOKEN }}
-          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          GEMINI_API_KEY:      ${{ secrets.GEMINI_API_KEY }}
+          SURGE_TOKEN:         ${{ secrets.SURGE_TOKEN }}
+          LINE_NOTIFY_TOKEN:   ${{ secrets.LINE_NOTIFY_TOKEN }}
